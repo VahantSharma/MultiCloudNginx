@@ -1,0 +1,58 @@
+# Azure DevOps Pipeline for Terraform
+
+trigger:
+  branches:
+    include:
+      - main
+
+parameters:
+  - name: environment
+    displayName: Environment
+    type: string
+    default: dev
+    values:
+      - dev
+      - staging
+      - prod
+
+  - name: action
+    displayName: Action
+    type: string
+    default: plan
+    values:
+      - plan
+      - apply
+      - destroy
+
+pool:
+  vmImage: "ubuntu-latest"
+
+variables:
+  - group: terraform-secrets
+
+stages:
+  - stage: Terraform
+    jobs:
+      - job: TerraformJob
+        steps:
+          - task: TerraformInstaller@0
+            inputs:
+              terraformVersion: "1.5.0"
+
+          - script: |
+              terraform init
+            displayName: "Terraform Init"
+
+          - script: |
+              terraform plan -var-file=environments/${{ parameters.environment }}/terraform.tfvars -out=tfplan
+            displayName: "Terraform Plan"
+
+          - script: |
+              terraform apply tfplan
+            condition: eq('${{ parameters.action }}', 'apply')
+            displayName: "Terraform Apply"
+
+          - script: |
+              terraform destroy -var-file=environments/${{ parameters.environment }}/terraform.tfvars -auto-approve
+            condition: eq('${{ parameters.action }}', 'destroy')
+            displayName: "Terraform Destroy"
