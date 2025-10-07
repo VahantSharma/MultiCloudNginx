@@ -9,9 +9,9 @@ The infrastructure supports:
 - Multiple environments (dev, staging, prod)
 - Azure deployment with VMs, Virtual Networks, and Application Gateway
 - Modular architecture with reusable Terraform modules
-- Load balancing
-- Remote state management
-- CI/CD integration
+- Load balancing with HTTPS
+- Remote state management with locking
+- CI/CD integration with Jenkins
 
 ## Architecture
 
@@ -19,8 +19,8 @@ The infrastructure supports:
 
 - **compute**: Creates Azure VMs with Docker and NGINX
 - **networking**: Sets up Virtual Network, subnets, NAT Gateway
-- **loadbalancer**: Deploys Azure Application Gateway
-- **nginx-app**: Generates Docker setup scripts
+- **loadbalancer**: Deploys Azure Application Gateway with SSL
+- **nginx-app**: Generates Docker setup scripts with OpenSSL certs
 
 ### Environments
 
@@ -33,116 +33,29 @@ The infrastructure supports:
 - Terraform >= 1.5
 - Azure CLI configured
 - Docker
+- Jenkins (for CI/CD)
 
-## Deployment
+## Deployment Steps
 
-### Local Deployment
+### 1. Set Up Azure Resources
+1. Log in: `az login`
+2. Create SP: `az ad sp create-for-rbac --name nginx-sp --role Contributor --scopes /subscriptions/YOUR_SUB_ID`
+3. Create state storage: `az group create --name terraform-state-vs --location eastus` then storage account/container.
 
-1. Configure Azure CLI:
+### 2. Configure Jenkins
+- Run Jenkins in Docker: `docker run -d -p 8080:8080 -p 50000:50000 -v jenkins_home:/var/jenkins_home --name jenkins jenkins/jenkins:lts`
+- Add Azure credentials in Jenkins (ARM_CLIENT_ID, etc.).
+- Create pipeline job pointing to this repo's Jenkinsfile.
 
-   ```bash
-   az login
-   ```
+### 3. Deploy via Jenkins
+- Select environment and action (plan/apply).
+- Monitor for successful provisioning of VMs, App Gateway with HTTPS.
 
-2. Navigate to the environment directory:
+### 4. Access Application
+- Get App Gateway DNS from Terraform output.
+- Visit `https://<dns>` for NGINX over HTTPS.
 
-   ```bash
-   cd environments/dev
-   ```
-
-3. Initialize Terraform:
-
-   ```bash
-   terraform init
-   ```
-
-4. Plan the deployment:
-
-   ```bash
-   terraform plan -var-file=terraform.tfvars
-   ```
-
-5. Apply the changes:
-   ```bash
-   terraform apply -var-file=terraform.tfvars
-   ```
-
-### CI/CD Deployment
-
-#### Jenkins
-
-- Use the provided `Jenkinsfile`
-- Set environment variables for cloud credentials
-- Trigger pipeline with parameters
-
-#### Azure DevOps
-
-- Use the provided `azure-pipelines.yml`
-- Configure variable groups for secrets
-- Run pipeline with parameters
-
-## Outputs
-
-After deployment, note the Application Gateway public IP:
-
-- Azure App Gateway: `module.loadbalancer.azure_appgw_public_ip`
-
-Access the application at `http://<appgw-public-ip>`.
-
-## Security Notes
-
-- Restrict SSH access in production
-
-## Cleanup
-
-To destroy the infrastructure:
-
-```bash
-terraform destroy -var-file=terraform.tfvars
-```
-
-## Contributing
-
-1. Follow modular structure
-2. Test changes in dev environment first
-3. Update documentation
-
-## Optional: Global DNS Routing
-
-To route traffic globally using Azure Traffic Manager:
-
-- Create a Traffic Manager profile for `nginx.example.com`
-- Add endpoints pointing to Application Gateway public IPs
-- Use performance-based routing for multi-region deployments
-
-Example Terraform:
-
-```hcl
-resource "azurerm_traffic_manager_profile" "nginx" {
-  name                   = "nginx-traffic-manager"
-  resource_group_name    = var.resource_group_name
-  traffic_routing_method = "Performance"
-
-  dns_config {
-    relative_name = "nginx"
-    ttl           = 100
-  }
-
-  monitor_config {
-    protocol                     = "HTTPS"
-    port                         = 443
-    path                         = "/"
-    interval_in_seconds          = 30
-    timeout_in_seconds           = 9
-    tolerated_number_of_failures = 3
-  }
-}
-
-resource "azurerm_traffic_manager_endpoint" "nginx" {
-  name                = "nginx-endpoint"
-  resource_group_name = var.resource_group_name
-  profile_name        = azurerm_traffic_manager_profile.nginx.name
-  target_resource_id  = azurerm_public_ip.appgw.id
-  type                = "azureEndpoints"
-}
-```
+## Security
+- Use SP for auth, store secrets in Jenkins.
+- NSG restricts IPs in prod.
+- Self-signed certs (replace with CA-signed for prod).
