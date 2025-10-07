@@ -1,0 +1,5 @@
+*.tfstate
+.terraform/
+CREDENTIALS.md
+*.pem
+*.key
