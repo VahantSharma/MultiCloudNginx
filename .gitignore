@@ -3,3 +3,9 @@
 CREDENTIALS.md
 *.pem
 *.key
+*.tfvars
+*.pfx
+cert.pfx
+*.log
+.DS_Store
+.vscode/

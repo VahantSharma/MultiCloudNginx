@@ -27,6 +27,8 @@ module "networking" {
 # NGINX App Module
 module "nginx_app" {
   source = "./modules/nginx-app"
+
+  admin_username = var.admin_username
 }
 
 # Compute Module

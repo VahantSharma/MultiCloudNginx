@@ -82,6 +82,12 @@ variable "ssl_certificate_password" {
   default     = ""
 }
 
+variable "admin_username" {
+  description = "Admin username for VMs"
+  type        = string
+  default     = "azureuser"
+}
+
 variable "tags" {
   description = "Tags"
   type        = map(string)

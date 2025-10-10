@@ -57,19 +57,19 @@ apt-get upgrade -y
 # Install Docker
 curl -fsSL https://get.docker.com -o get-docker.sh
 sh get-docker.sh
-usermod -aG docker ubuntu
+usermod -aG docker ${var.admin_username}
 
 # Create Dockerfile
-cat > /home/ubuntu/Dockerfile << 'DOCKERFILE'
+cat > /home/${var.admin_username}/Dockerfile << 'DOCKERFILE'
 ${local.dockerfile}
 DOCKERFILE
 
 # Create nginx.conf
-cat > /home/ubuntu/nginx.conf << 'NGINXCONF'
+cat > /home/${var.admin_username}/nginx.conf << 'NGINXCONF'
 ${local.nginx_conf}
 NGINXCONF
 
-cd /home/ubuntu
+cd /home/${var.admin_username}
 docker build -t nginx-app .
 docker run -d -p 80:80 -p 443:443 nginx-app
 EOF

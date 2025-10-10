@@ -21,13 +21,19 @@ pipeline {
         }
         stage('Terraform Init') {
             steps {
-                sh 'terraform init'
+                sh 'terraform init -backend-config="resource_group_name=terraform-state-vs" -backend-config="storage_account_name=terraformersprime" -backend-config="container_name=tfstate" -backend-config="key=terraform-${params.ENVIRONMENT}.tfstate"'
+            }
+        }
+
+        stage('Select Workspace') {
+            steps {
+                sh "terraform workspace select ${params.ENVIRONMENT} || terraform workspace new ${params.ENVIRONMENT}"
             }
         }
 
         stage('Terraform Plan') {
             steps {
-                sh "terraform plan -var-file=environments/${params.ENVIRONMENT}/terraform.tfvars -out=tfplan"
+                sh "terraform plan -var-file=${params.ENVIRONMENT}.tfvars -out=tfplan"
             }
         }
 
@@ -45,7 +51,7 @@ pipeline {
                 expression { params.ACTION == 'destroy' }
             }
             steps {
-                sh "terraform destroy -var-file=environments/${params.ENVIRONMENT}/terraform.tfvars -auto-approve"
+                sh "terraform destroy -var-file=${params.ENVIRONMENT}.tfvars -auto-approve"
             }
         }
     }

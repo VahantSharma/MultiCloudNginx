@@ -17,3 +17,9 @@ variable "ssl_key_path" {
   type        = string
   default     = "/etc/nginx/certs/key.pem"
 }
+
+variable "admin_username" {
+  description = "Admin username for the VM"
+  type        = string
+  default     = "azureuser"
+}

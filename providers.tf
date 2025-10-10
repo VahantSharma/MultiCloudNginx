@@ -15,10 +15,6 @@ terraform {
   }
 
    backend "azurerm" {
-     resource_group_name  = "terraform-state-vs"
-     storage_account_name = "terraformersprime"
-     container_name       = "tfstate"
-     key                  = "terraform.tfstate"
    }
 }
 

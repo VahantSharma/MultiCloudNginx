@@ -21,6 +21,22 @@ resource "tls_self_signed_cert" "example" {
   ]
 }
 
+# Generate PFX certificate
+resource "null_resource" "generate_pfx" {
+  provisioner "local-exec" {
+    command = <<EOF
+openssl pkcs12 -export -out cert.pfx -inkey <(echo "${tls_private_key.example.private_key_pem}") -in <(echo "${tls_self_signed_cert.example.cert_pem}") -password pass:
+EOF
+  }
+
+  depends_on = [tls_private_key.example, tls_self_signed_cert.example]
+}
+
+data "local_file" "pfx_cert" {
+  filename = "cert.pfx"
+  depends_on = [null_resource.generate_pfx]
+}
+
 # Azure Application Gateway
 resource "azurerm_application_gateway" "this" {
   name                = "nginx-appgw"
@@ -60,7 +76,7 @@ resource "azurerm_application_gateway" "this" {
 
   ssl_certificate {
     name     = "nginx-ssl-cert"
-    data     = tls_self_signed_cert.example.cert_pem
+    data     = data.local_file.pfx_cert.content_base64
     password = ""
   }
 
